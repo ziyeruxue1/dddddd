@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>沪深300 指数可视化</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    .meta { color: #666; font-size: 12px; }
+    .controls { display: flex; gap: 8px; }
+    button { padding: 8px 12px; border: 1px solid #ddd; background: #fafafa; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #f0f0f0; }
+    canvas { max-width: 100%; height: 480px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>沪深300 指数（CSI 300）</h1>
+      <div class="meta">共 {{ count }} 个交易日</div>
+    </div>
+    <div class="controls">
+      <button id="updateBtn">更新数据</button>
+    </div>
+  </header>
+
+  <canvas id="priceChart"></canvas>
+
+  <script>
+    const labels = {{ labels | tojson }};
+    const closeValues = {{ close_values | tojson }};
+    const openValues = {{ open_values | tojson }};
+    const highValues = {{ high_values | tojson }};
+    const lowValues = {{ low_values | tojson }};
+
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: '收盘', data: closeValues, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.2 },
+          { label: '开盘', data: openValues, borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.10)', hidden: true, tension: 0.2 },
+          { label: '最高', data: highValues, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.10)', hidden: true, tension: 0.2 },
+          { label: '最低', data: lowValues, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.10)', hidden: true, tension: 0.2 },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { position: 'top' },
+          title: { display: true, text: '沪深300 历史价格' }
+        },
+        scales: {
+          x: { ticks: { maxTicksLimit: 12 } },
+          y: { beginAtZero: false }
+        }
+      }
+    });
+
+    document.getElementById('updateBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('updateBtn');
+      const original = btn.textContent;
+      btn.disabled = true; btn.textContent = '更新中...';
+      try {
+        const resp = await fetch('/update');
+        const data = await resp.json();
+        alert(`更新完成：新增 ${data.inserted} 条，更新 ${data.updated} 条，共 ${data.total} 条`);
+        location.reload();
+      } catch (e) {
+        alert('更新失败：' + e);
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    });
+  </script>
+</body>
+</html>
